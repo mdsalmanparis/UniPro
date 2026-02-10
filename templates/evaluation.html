@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Evaluation Section</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        .calc-display { background-color: #e9ecef; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">Data App</a>
+    <div class="collapse navbar-collapse">
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Students</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('courses') }}">Courses</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('enrollments') }}">Enrollments</a></li>
+        <li class="nav-item"><a class="nav-link active" href="{{ url_for('evaluation') }}">Evaluation</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+    <h2 class="text-center mb-4">Exam Evaluation Module</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-md-5">
+            <div class="card p-4 shadow-sm">
+                <h4>Enter Marks</h4>
+                <form method="POST" action="/evaluation" onsubmit="return validateIds()">
+                    
+                    <div class="mb-2">
+                        <label>Select Student</label>
+                        <input list="s_list" id="s_input" class="form-control" placeholder="Search Student..." onchange="updateId('s_list', 's_input', 'real_s_id')" required>
+                        <datalist id="s_list">
+                            {% for s in students %}
+                                <option data-value="{{ s.id }}" value="{{ s.register_number }} - {{ s.name }}"></option>
+                            {% endfor %}
+                        </datalist>
+                        <input type="hidden" name="student_id" id="real_s_id">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Select Course</label>
+                        <input list="c_list" id="c_input" class="form-control" placeholder="Search Course..." onchange="updateId('c_list', 'c_input', 'real_c_id')" required>
+                        <datalist id="c_list">
+                            {% for c in courses %}
+                                <option data-value="{{ c.id }}" value="{{ c.course_code }} - {{ c.name }}"></option>
+                            {% endfor %}
+                        </datalist>
+                        <input type="hidden" name="course_id" id="real_c_id">
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row mb-2">
+                        <div class="col"><label>CIA 1 (30)</label><input type="number" name="cia1" id="cia1" class="form-control" max="30" oninput="calculate()" required></div>
+                        <div class="col"><label>CIA 2 (50)</label><input type="number" name="cia2" id="cia2" class="form-control" max="50" oninput="calculate()" required></div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col"><label>Model (100)</label><input type="number" name="model" id="model" class="form-control" max="100" oninput="calculate()" required></div>
+                        <div class="col"><label>Internal (40)</label><input type="number" name="internal" id="internal" class="form-control" max="40" oninput="calculate()" required></div>
+                    </div>
+                    <div class="mb-3">
+                         <label class="text-primary fw-bold">Semester Exam (100)</label>
+                         <input type="number" name="semester" id="semester" class="form-control border-primary" max="100" oninput="calculate()" required>
+                    </div>
+
+                    <div class="card bg-light p-2 mb-3">
+                        <div class="row text-center">
+                            <div class="col">
+                                <small>Internal (40%)</small>
+                                <input type="text" name="calc_internal" id="res_internal" class="form-control text-center calc-display" readonly>
+                            </div>
+                            <div class="col">
+                                <small>External (60%)</small>
+                                <input type="text" name="calc_external" id="res_external" class="form-control text-center calc-display" readonly>
+                            </div>
+                            <div class="col">
+                                <small>Total (100%)</small>
+                                <input type="text" name="calc_total" id="res_total" class="form-control text-center calc-display text-success" style="font-size: 1.2em;" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100">Save Grades</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-md-7">
+            <div class="card p-4 shadow-sm h-100">
+                <h4>Grade Book</h4>
+                {% if graphJSON %}
+                    <div id="chart" style="height: 250px;"></div>
+                    <script>
+                        var graphs = {{ graphJSON | safe }};
+                        Plotly.newPlot('chart', graphs, {});
+                    </script>
+                {% endif %}
+                
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Course</th>
+                                <th>Internal</th>
+                                <th>Sem</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for e in evaluations %}
+                            <tr>
+                                <td>{{ e.student.register_number }}</td>
+                                <td>{{ e.course.course_code }}</td>
+                                <td>{{ "%.1f"|format(e.total_internal_40) }}</td>
+                                <td>{{ "%.1f"|format(e.total_external_60) }}</td>
+                                <td class="fw-bold">{{ "%.1f"|format(e.final_mark_100) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. ID Helper (Same as previous module)
+    function updateId(listId, inputId, hiddenId) {
+        var list = document.getElementById(listId);
+        var input = document.getElementById(inputId);
+        var hidden = document.getElementById(hiddenId);
+        var options = list.options;
+        hidden.value = "";
+        for (var i = 0; i < options.length; i++) {
+            if (options[i].value === input.value) {
+                hidden.value = options[i].getAttribute('data-value');
+                break;
+            }
+        }
+    }
+
+    function validateIds() {
+        if(!document.getElementById('real_s_id').value || !document.getElementById('real_c_id').value) {
+            alert("Please select a valid Student and Course from the list.");
+            return false;
+        }
+        return true;
+    }
+
+    // 2. AUTO CALCULATION LOGIC
+    function calculate() {
+        // Get values (default to 0 if empty)
+        let cia1 = parseFloat(document.getElementById('cia1').value) || 0;
+        let cia2 = parseFloat(document.getElementById('cia2').value) || 0;
+        let model = parseFloat(document.getElementById('model').value) || 0;
+        let internal = parseFloat(document.getElementById('internal').value) || 0;
+        let semester = parseFloat(document.getElementById('semester').value) || 0;
+
+        // Formula: 
+        // Total raw internal = cia1(30) + cia2(50) + model(100) + internal(40) = 220 max
+        // We need to scale this 220 down to 40.
+        let raw_internal_sum = cia1 + cia2 + model + internal;
+        let scaled_internal = (raw_internal_sum / 220) * 40;
+
+        // Semester is out of 100, scale to 60.
+        let scaled_semester = (semester / 100) * 60;
+
+        let total = scaled_internal + scaled_semester;
+
+        // Update UI (rounded to 2 decimal places)
+        document.getElementById('res_internal').value = scaled_internal.toFixed(2);
+        document.getElementById('res_external').value = scaled_semester.toFixed(2);
+        document.getElementById('res_total').value = total.toFixed(2);
+    }
+</script>
+
+</body>
+</html>

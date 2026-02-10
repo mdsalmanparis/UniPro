@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Enrollment Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">Data App</a>
+    <div class="collapse navbar-collapse">
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Students</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('courses') }}">Courses</a></li>
+        <li class="nav-item"><a class="nav-link active" href="{{ url_for('enrollments') }}">Enrollments</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+    <h2 class="text-center mb-4">Enrollment Manager</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card p-4 shadow-sm">
+                <h4>New Enrollment</h4>
+                <form method="POST" action="/enrollments" onsubmit="return validateForm()">
+                    
+                    <div class="mb-3">
+                        <label>Select Student</label>
+                        <input list="student_list" id="student_input" class="form-control" placeholder="Type to search..." oninput="updateId('student_list', 'student_input', 'real_student_id')" autocomplete="off">
+                        <datalist id="student_list">
+                            {% for s in students %}
+                                <option data-value="{{ s.id }}" value="{{ s.register_number }} - {{ s.name }}"></option>
+                            {% endfor %}
+                        </datalist>
+                        <input type="hidden" name="student_id" id="real_student_id">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Select Course</label>
+                        <input list="course_list" id="course_input" class="form-control" placeholder="Type to search..." oninput="updateId('course_list', 'course_input', 'real_course_id')" autocomplete="off">
+                        <datalist id="course_list">
+                            {% for c in courses %}
+                                <option data-value="{{ c.id }}" value="{{ c.course_code }} - {{ c.name }}"></option>
+                            {% endfor %}
+                        </datalist>
+                        <input type="hidden" name="course_id" id="real_course_id">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mt-2">Enroll Student</button>
+                </form>
+                <small class="text-muted mt-2 d-block text-center">** You must select an item from the dropdown list.</small>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card p-4 shadow-sm">
+                <h4>Course Enrollment Status</h4>
+                <div style="max-height: 300px; overflow-y:auto;">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Code</th>
+                                <th>Course Name</th>
+                                <th>Enrolled Count</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in course_stats %}
+                            <tr class="{% if selected_course and selected_course.id == c.id %}table-info{% endif %}">
+                                <td>{{ c.code }}</td>
+                                <td>{{ c.name }}</td>
+                                <td><span class="badge bg-secondary">{{ c.count }}</span></td>
+                                <td>
+                                    <a href="{{ url_for('enrollments', view_course_id=c.id) }}" class="btn btn-sm btn-outline-info">View Students</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {% if selected_course %}
+            <div class="card p-4 shadow-sm mt-4 border-info">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-info m-0">Students in: {{ selected_course.name }}</h5>
+                    <a href="{{ url_for('enrollments') }}" class="btn btn-sm btn-outline-secondary">Close</a>
+                </div>
+                
+                {% if enrolled_students %}
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Reg No</th>
+                                <th>Name</th>
+                                <th>Degree</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in enrolled_students %}
+                            <tr>
+                                <td>{{ s.register_number }}</td>
+                                <td>{{ s.name }}</td>
+                                <td>{{ s.degree }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="text-muted">No students enrolled yet.</p>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateId(listId, inputId, hiddenId) {
+        var list = document.getElementById(listId);
+        var input = document.getElementById(inputId);
+        var hidden = document.getElementById(hiddenId);
+        
+        // Reset hidden ID first
+        hidden.value = ""; 
+
+        var options = list.options;
+        for (var i = 0; i < options.length; i++) {
+            if (options[i].value === input.value) {
+                hidden.value = options[i].getAttribute('data-value');
+                break;
+            }
+        }
+        console.log("Input: " + input.value + " | ID Set to: " + hidden.value);
+    }
+
+    function validateForm() {
+        var sId = document.getElementById('real_student_id').value;
+        var cId = document.getElementById('real_course_id').value;
+
+        if (!sId || !cId) {
+            alert("Please ensure you select a valid option from the dropdown list!");
+            return false;
+        }
+        return true;
+    }
+</script>
+
+</body>
+</html>
